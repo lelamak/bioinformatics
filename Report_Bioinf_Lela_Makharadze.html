@@ -1950,28 +1950,25 @@ fourdata &lt;-list(pc, pc.sum, varExp, pcs)
 return(fourdata)
 }
 
-
 PCAplot &lt;- function(x){ 
   ggplot(data = x[[4]], aes(x = PC1, y = PC2 ))+geom_point()+ xlab(paste(&quot;PC1 (&quot;, x[[3]][1], &quot;%)&quot;))  + ylab(paste(&quot;PC2 (&quot;, x[[3]][2], &quot;%)&quot;))+theme_bw()+theme(legend.position = &quot;none&quot;)
 }
 
-# ATTENTION EACH TIME U RUN KMEANS&lt; CLUSTER NUMBERING IS DIFERENT, thus colors should be matched manualle each time. 
 # PCA and k-means for all 500 samples
 PCAall &lt;-PCA(ExpMatrixLog2T)  
 resultsAll &lt;- kmeans(PCAall[[4]][, 1:5], 3)
 resultsAll$cluster &lt;-as.factor(resultsAll$cluster) #essential step for later plot labeling. 
-
-kplotAll &lt;- ggplot(data = PCAall[[4]], aes(x = PC1, y = PC2, color=resultsAll$cluster))+ xlab(paste(&quot;PC1 (&quot;, PCAall[[3]][1], &quot;%)&quot;))  + ylab(paste(&quot;PC2 (&quot;, PCAall[[3]][2], &quot;%)&quot;))+geom_point()+theme_bw()+theme(legend.position = &quot;none&quot;) +scale_color_manual(values = c( &quot;red&quot;,&quot;purple&quot;, &quot;deepskyblue1&quot; ))
-
+kplotAll &lt;- ggplot(data = PCAall[[4]], aes(x = PC1, y = PC2, color=resultsAll$cluster))+ xlab(paste(&quot;PC1 (&quot;, PCAall[[3]][1], &quot;%)&quot;))  + ylab(paste(&quot;PC2 (&quot;, PCAall[[3]][2], &quot;%)&quot;))+geom_point()+theme_bw()+theme(legend.position = &quot;none&quot;) +scale_color_manual(values = c(&quot;deepskyblue1&quot;, &quot;purple&quot;,&quot;red&quot;))
+                 
 #k-means for all 500 samples overlayed with normal samples
-kplotAllHighlight &lt;- kplotAll+ geom_point(data=PCAall[[4]][samplesNT,], aes(x = PC1, y = PC2), color=&quot;blue&quot;)+theme(legend.position = &quot;none&quot;)
+kplotAllHighlight &lt;- kplot+ geom_point(data=PCAall[[4]][samplesNT,], aes(x = PC1, y = PC2), color=&quot;blue&quot;)+theme(legend.position = &quot;none&quot;)
 
 #PCA and k-means for only tumor samples
 PCATP &lt;- PCA(onlytumor)
 PCATPplot&lt;-PCAplot(PCATP)
 resultsTP &lt;- kmeans(PCATP[[4]][, 1:6], 2)  
 resultsTP$cluster&lt;- as.factor(resultsTP$cluster)
-kplotTP &lt;-ggplot(data = PCATP[[4]], aes(x = PC1, y = PC2, color=resultsTP$cluster ))+ xlab(paste(&quot;PC1 (&quot;, PCATP[[3]][1], &quot;%)&quot;))  + ylab(paste(&quot;PC2 (&quot;, PCATP[[3]][2], &quot;%)&quot;))+geom_point()+theme_bw()+theme(legend.position = &quot;none&quot;) +scale_color_manual(values = c(&quot;purple&quot;,&quot;red&quot;))
+kplotTP &lt;-ggplot(data = PCATP[[4]], aes(x = PC1, y = PC2, color=resultsTP$cluster ))+ xlab(paste(&quot;PC1 (&quot;, PCATP[[3]][1], &quot;%)&quot;))  + ylab(paste(&quot;PC2 (&quot;, PCATP[[3]][2], &quot;%)&quot;))+geom_point()+theme_bw()+theme(legend.position = &quot;none&quot;) +scale_color_manual(values = c(&quot;red&quot;,&quot;purple&quot;))
 
 #all four plots merged
 fourplots &lt;-cowplot::plot_grid(kplotAll, kplotAllHighlight, PCATPplot, kplotTP, align = &quot;hv&quot;, nrow = 2,  labels = c(&#39;A&#39;, &#39;B&#39;,  &quot;C&quot;, &quot;D&quot;)) 
@@ -1998,10 +1995,9 @@ which(rownames(onlytumorUN)==&quot;cluster&quot; ) # 14900 = cluster row
 groups &lt;- as.factor(onlytumorUN[14900,]) # I provide 2 groups=clusters
 designs &lt;- model.matrix(~0 + groups, data=onlytumorUN[-14900,]) #and exclude cluster IDs from calculation
 
-#ATTENSION: depending cluster numbering you choose which cluster you want to use a reference
-#thus substract from there
+
 #Contrasts matrix
-ContrastMat &lt;- makeContrasts(difference = groups2-groups1, levels = designs)
+ContrastMat &lt;- makeContrasts(difference = groups1-groups2, levels = designs)
 
 fits &lt;- lmFit(onlytumorUN[-14900,], designs)
 
@@ -2175,7 +2171,7 @@ print(PCAprobesplot)</code></pre>
 <p>Next, methylation levels were tested for differentially expressed genes to find a correlation between gene expression status and methylation of CpGs associated with them. To this end, several additional operations were required to find matching probes for the genes of interest.</p>
 <pre class="r"><code>#probe and gene annotation data
  annots = getAnnotation(IlluminaHumanMethylation450kanno.ilmn12.hg19)
- annots &lt;- as.data.frame(annots)
+ annots &lt;- as.matrix(annots)
 
 #genes of interest to find matching probes for
 tops &lt;- topTable(efits, number=Inf) # get all genes from DEA
@@ -2224,12 +2220,10 @@ MyProbes$MeanProbeUP &lt;- rowMeans(MyProbes[, colnames(MatchselectUP)])
 #finally correct assignment of samples to clusters was possible
 MyProbes$cluster &lt;- as.factor(onlytumor$cluster)</code></pre>
 <p>Methylation level of up- and down-regulated genes demonstrated significant variation between ER- and ER+ clusters, whereas probes corresponding to the non-differentially expressed genes showed no variance.</p>
-<pre class="r"><code>#also watch out here as cluster numbers are not stable- check and then replace with ER and then assign 
-#the correct colorcodes
-#assigning clusters to ER- and ER+ groups
+<pre class="r"><code>#assigning clusters to ER- and ER+ groups
 MyProbes$cluster &lt;- as.character(MyProbes$cluster)
-MyProbes$cluster[MyProbes$cluster == &quot;2&quot;] &lt;- &quot;ER+&quot;
-MyProbes$cluster[MyProbes$cluster == &quot;1&quot;] &lt;- &quot;ER-&quot;
+MyProbes$cluster[MyProbes$cluster == &quot;1&quot;] &lt;- &quot;ER+&quot;
+MyProbes$cluster[MyProbes$cluster == &quot;2&quot;] &lt;- &quot;ER-&quot;
 
 
 UNbox &lt;- MyProbes[, -161] %&gt;%ggplot(aes(x = cluster, y = MeanProbeUN, fill=cluster)) #had a probe duplication at 161 and omitted
@@ -2531,8 +2525,6 @@ print(methboxp)</code></pre>
 ## [175] GenomeInfoDbData_1.2.3    HDF5Array_1.16.1         
 ## [177] haven_2.3.1               reshape2_1.4.4           
 ## [179] gtable_0.3.0</code></pre>
-<p>#domestic codes #to really be able to conduct all the analysis in each chunk apart from the data acquision #you need to load the following saved files. delete the rest of them</p>
-<p>Extra Codes</p>
 </div>
 
 
